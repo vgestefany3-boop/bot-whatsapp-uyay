@@ -1,0 +1,148 @@
+{
+  "name": "Bot WhatsApp UYAY (webhook manual)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-uyay",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cfc1bb92-0308-4903-854b-47540206e245",
+      "name": "Verificación Meta (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c1a2b3c4-1111-4aaa-8bbb-000000000001"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.verify_token'] === 'uyay2026' ? $json.query['hub.challenge'] : 'token incorrecto' }}",
+        "options": {}
+      },
+      "id": "73433a2e-3755-42a6-92c2-2fc4abc7a87c",
+      "name": "Responder a Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-uyay",
+        "options": {}
+      },
+      "id": "e4801199-b9c3-40a2-9d56-cf05516a467e",
+      "name": "Mensajes WhatsApp (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ],
+      "webhookId": "c1a2b3c4-1111-4aaa-8bbb-000000000002"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================\n//  BOT UYAY – edita textos y datos en esta sección\n// =====================================================\nconst CONFIG = {\n  // SOLO PARA PRUEBAS con el número de prueba de Meta (+1 555...):\n  // Meta solo deja responder a números de la lista de prueba, y a veces el mensaje llega sin número.\n  // Pon aquí tu celular de prueba. Cuando pases a tu número real, déjalo vacío: ''\n  numeroPrueba: '51993862844',\n  // Cada cuántas horas se vuelve a mandar la bienvenida larga a un mismo cliente\n  horasEntreBienvenidas: 24,\n  // Tras responder una opción, ¿volver a mandar el menú? (cada mensaje cuenta en tu cupo gratis)\n  reenviarMenu: true,\n  // Número de la asesora (el celular de la empresa), formato wa.me sin \"+\"\n  linkAsesora: 'https://wa.me/51999999999',\n  // Catálogos en PDF: deben ser links PÚBLICOS (Drive con \"cualquiera con el enlace\", S3, tu web)\n  // titulo: máx. 24 caracteres | descripcion: máx. 72 | máximo 9 catálogos\n  catalogos: [\n    { titulo: 'Cumpleaños y Eventos', descripcion: 'Cumpleaños, eventos y disfraces', url: 'https://drive.usercontent.google.com/download?id=1IwQanzHMxXCgupzinLTR-kC9AZsOjnzm&export=download', nombre: 'UYAY Cumpleanos Eventos y Disfraces.pdf' },\n    { titulo: 'Hogar y Manualidades', descripcion: 'Hogar, decoración y manualidades', url: 'https://drive.usercontent.google.com/download?id=1d5LG7uFemYe7eog0g-60zkIPEFwjbJQR&export=download', nombre: 'UYAY Hogar y Manualidades.pdf' },\n    { titulo: 'Juguetería y TCG', descripcion: 'Juguetes y cartas coleccionables', url: 'https://drive.usercontent.google.com/download?id=1K7aEWZDpFK0b3keqh2qAx5pwz8aMJI5H&export=download', nombre: 'UYAY Jugueteria y TCG.pdf' },\n    { titulo: 'Libros y Útiles', descripcion: 'Libros y útiles escolares', url: 'https://drive.usercontent.google.com/download?id=1z5ac8lvDUNH9nU76x16On49O8IFP2TKV&export=download', nombre: 'UYAY Libros y Utiles Escolares.pdf' },\n    { titulo: 'Ropa', descripcion: 'Ropa y moda', url: 'https://drive.usercontent.google.com/download?id=1Zkmo9PMZAbAlUsJMyL11zVgV-k5cPzT5&export=download', nombre: 'UYAY Ropa.pdf' },\n  ],\n  // Número que recibe el resumen de cada pedido de figura 3D (ej. '51999999999').\n  // Vacío = no se avisa a nadie. OJO: en pruebas debe estar en la lista de Meta, y en producción\n  // ese número debe haberle escrito al bot en las últimas 24 h para que le lleguen los avisos.\n  numeroAdmin: '51993862844',\n};\n \nconst TEXTOS = {\n  f3dInicio:\n`🧊✨ *PEDIDO DE FIGURA 3D* ✨🧊\n \n¡Hacemos tu figura personalizada! 💖\nEnvíanos *en un solo mensaje* (puede ser una foto con texto):\n \n📸 *Foto de referencia* (personaje, persona, mascota, logo...)\n📏 *Altura* que quieres (ej. 10 cm, 15 cm, 20 cm)\n🎨 *Detalles*: colores, acabado, nombre o texto, cantidad y *para qué fecha* la necesitas\n \n_Ejemplo: (foto) \"Goku de 15 cm, pintado, para el 20 de diciembre\"_\n \n_(Escribe *0* para cancelar)_`,\n  f3dFotoExtra: `📸 ¡Foto recibida! Ahora escríbenos la *altura* y los *detalles* de tu figura 👇`,\n  f3dFotoAgregada: `📸 Foto agregada a tu pedido ✅`,\n  f3dResumen: (p) =>\n`✅ *¡PEDIDO RECIBIDO!* 🧊\n \n📝 *Tu pedido:* ${p.descripcion || '(ver fotos)'}\n📸 *Fotos:* ${p.medios.length}\n \nUna asesora revisará tu pedido y te enviará la *cotización* por aquí muy pronto 💖`,\n  f3dAdmin: (p, quien) =>\n`🔔 *NUEVO PEDIDO FIGURA 3D*\n👤 Cliente: ${quien}\n📝 Pedido: ${p.descripcion || '(ver fotos)'}\n📸 Fotos: ${p.medios.length} (abajo)`,\n  bienvenida:\n`👑💖 *¡BIENVENIDA A UYAY QUEEN!* 💖👑\n \nGracias por escribirnos ✨\nSomos *IMPORTADORES MAYORISTAS* de accesorios, bisutería y novedades para tu negocio 🎀\n \n🎀 *NOVEDADES CADA 15 DÍAS*\nSiempre encontrarás modelos nuevos y en tendencia.\n \n🔥 *35% DE DESCUENTO*\nEn todos los productos marcados con ▬\n \n🚚 *ENVÍOS DIARIOS A TODO EL PERÚ*\nDespachamos a la agencia de transporte que prefieras.\n \n📦 *SIN COSTOS ADICIONALES*\n✅ No cobramos embalaje\n✅ No cobramos traslado a la agencia\nSolo pagas tus productos (el flete de la agencia es aparte).\n \n🛍️ *COMPRA MÍNIMA: S/99*\n \n📍 [TU DIRECCIÓN]\n🕙 Lunes a sábado, 10:00 a. m. – 7:00 p. m.`,\n \n  menuCuerpo:\n`👑 *UYAY | ATENCIÓN MAYORISTA*\n \n¡Estamos felices de atenderte! 💕\n \n¿En qué podemos ayudarte hoy?\nToca el botón y elige una opción 👇`,\n \n  catalogos:\n`👑💗 ¡Claro que sí, reina!\n \nTe compartimos nuestros *CATÁLOGOS ACTUALIZADOS* ✨\n \n🎀 Accesorios, bisutería, carteras, belleza y muchas novedades en tendencia.\n \n💕 Se actualizan cada 15 días.\n \nToca el botón y elige cuál quieres ver 👇`,\n \n  catalogoEnviado: (c) => `📖 Aquí tienes: *${c.titulo}* ✨`,\n \n  ver3d:\n`🧊 *MIRA NUESTROS PRODUCTOS EN 3D* ✨\n \nGíralos, acércalos y míralos como si los tuvieras en la mano 💖\n \nToca el botón y elige 👇`,\n \n  modelo3dEnviado: (m) => `🧊 *${m.titulo}*\n \nÁbrelo aquí y gíralo con el dedo 👉 ${m.link}`,\n \n  comoComprar:\n`🛍️ *¿CÓMO COMPRAR?*\n \n1️⃣ Revisa el catálogo y anota los códigos que te gustan.\n2️⃣ Envíanos tu lista a nuestra asesora.\n3️⃣ Te confirmamos stock y total.\n4️⃣ Pagas por Yape, Plin o transferencia.\n \n💰 Compra mínima: *S/99*`,\n \n  envios:\n`🚚 *ENVÍOS A TODO EL PERÚ*\n \nDespachamos todos los días a la agencia de transporte que prefieras (Shalom, Marvisur, Olva, etc.).\n \n📦 No cobramos embalaje ni traslado a la agencia.\nEl flete de la agencia lo pagas al recoger.`,\n \n  ubicacion:\n`📍 *NUESTRA TIENDA*\n[TU DIRECCIÓN]\n \n🕙 Lunes a sábado, 10:00 a. m. – 7:00 p. m.\n \n¡Te esperamos! 💖`,\n \n  asesora:\n`💬 ¡Con gusto te atiende una asesora!\n \nEscríbenos aquí 👉 ${CONFIG.linkAsesora}`,\n};\n \nconst MENU_OPCIONES = [\n  { id: 'catalogos', title: 'Ver catálogos',        description: 'Catálogos actualizados cada 15 días' },\n  { id: 'figura3d',  title: 'Pedido figura 3D',     description: 'Cuéntanos tu idea y te cotizamos' },\n  { id: 'comprar',   title: 'Cómo comprar',         description: 'Compra mínima, pagos y pedidos' },\n  { id: 'envios',    title: 'Envíos',               description: 'Envíos diarios a todo el Perú' },\n  { id: 'ubicacion', title: 'Ubicación y horario',  description: 'Visítanos en tienda' },\n  { id: 'asesora',   title: 'Hablar con asesora',   description: 'Te atiende una persona' },\n];\n \n// Palabras o números que el cliente puede escribir en vez de usar el botón\nconst ATAJOS = {\n  '1': 'catalogos', 'catalogo': 'catalogos', 'catálogo': 'catalogos', 'catalogos': 'catalogos', 'catálogos': 'catalogos',\n  '2': 'figura3d', '3d': 'figura3d', 'figura': 'figura3d', 'figura 3d': 'figura3d', 'pedido': 'figura3d',\n  '3': 'comprar', 'precio': 'comprar', 'precios': 'comprar', 'comprar': 'comprar',\n  '4': 'envios', 'envio': 'envios', 'envío': 'envios', 'envios': 'envios', 'envíos': 'envios',\n  '5': 'ubicacion', 'direccion': 'ubicacion', 'dirección': 'ubicacion', 'ubicacion': 'ubicacion', 'horario': 'ubicacion',\n  '6': 'asesora', 'asesora': 'asesora', 'asesor': 'asesora', 'humano': 'asesora',\n};\n \n// =====================================================\n//  LÓGICA (normalmente no necesitas tocar esto)\n// =====================================================\nconst base = (to) => (/^[A-Z]{2}\\./.test(to) ? { messaging_product: 'whatsapp', recipient: to } : { messaging_product: 'whatsapp', recipient_type: 'individual', to });\nconst texto = (to, body) => ({ ...base(to), type: 'text', text: { body, preview_url: true } });\nconst documento = (to, c) => ({ ...base(to), type: 'document', document: { link: c.url, filename: c.nombre } });\nconst video = (to, link, caption) => ({ ...base(to), type: 'video', video: { link, caption } });\nconst lista = (to, cuerpo, boton, tituloSeccion, filas) => ({\n  ...base(to),\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    body: { text: cuerpo },\n    action: { button: boton, sections: [{ title: tituloSeccion, rows: filas }] },\n  },\n});\nconst corta = (t, n) => (t || '').slice(0, n);\nconst submenuCatalogos = (to) => lista(to, TEXTOS.catalogos, 'Elegir catálogo', 'Catálogos',\n  [\n    ...CONFIG.catalogos.slice(0, 9).map((c, i) => ({ id: `cat_${i}`, title: corta(c.titulo, 24), description: corta(c.descripcion, 72) })),\n    { id: 'cat_todos', title: 'Todos los catálogos', description: 'Te enviamos todos los PDF' },\n  ]);\nconst submenu3d = (to) => lista(to, TEXTOS.ver3d, 'Elegir producto', 'En 3D',\n  CONFIG.modelos3d.slice(0, 10).map((m, i) => ({ id: `m3d_${i}`, title: corta(m.titulo, 24), description: corta(m.descripcion, 72) })));\nconst enviar3d = (to, m) => {\n  const out = [];\n  if (m.video) out.push(video(to, m.video, `🎥 ${m.titulo}`));\n  out.push(texto(to, TEXTOS.modelo3dEnviado(m)));\n  return out;\n};\n \nconst menu = (to) => ({\n  ...base(to),\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    body: { text: TEXTOS.menuCuerpo },\n    action: {\n      button: 'Ver opciones',\n      sections: [{ title: 'Menú UYAY', rows: MENU_OPCIONES }],\n    },\n  },\n});\n \n// Encuentra el objeto \"value\" del webhook sin importar cómo lo entregue el trigger\nfunction getValue(j) {\n  if (j.messages || j.statuses) return j;\n  return j?.entry?.[0]?.changes?.[0]?.value\n      || j?.body?.entry?.[0]?.changes?.[0]?.value\n      || {};\n}\n \nconst memoria = $getWorkflowStaticData('global'); // funciona con el flujo ACTIVADO\nmemoria.vistos = memoria.vistos || {};\n \nconst salida = [];\nfor (const item of $input.all()) {\n  const value = getValue(item.json);\n  const msg = value.messages?.[0];\n  if (!msg) continue; // ignora notificaciones de \"entregado/leído\"\n \n  const phoneNumberId = value.metadata?.phone_number_id;\n  const to = msg.from || value.contacts?.[0]?.wa_id || CONFIG.numeroPrueba || msg.from_user_id || value.contacts?.[0]?.user_id;\n  const payloads = [];\n \n  // ---------- Pedido de figura 3D (conversación por pasos) ----------\n  memoria.f3d = memoria.f3d || {};\n  const uid = msg.from_user_id || msg.from || to;\n  const txtLibre = msg.type === 'text' ? (msg.text?.body || '').trim() : '';\n  const esMedio = ['image', 'video', 'document', 'audio'].includes(msg.type);\n  const pedido = memoria.f3d[uid];\n  if (pedido && (msg.type === 'interactive' || ['0', 'menu', 'menú', 'cancelar'].includes(txtLibre.toLowerCase()))) {\n    delete memoria.f3d[uid]; // canceló o tocó el menú: sigue el flujo normal\n  } else if (pedido && pedido.paso === 'enviado') {\n    // Ya se envió el pedido: fotos extra en los siguientes 15 min se agregan al pedido\n    if (esMedio && Date.now() - pedido.t < 15 * 60 * 1000) {\n      payloads.push(texto(to, TEXTOS.f3dFotoAgregada));\n      if (CONFIG.numeroAdmin) {\n        payloads.push(texto(CONFIG.numeroAdmin, `📸 Foto extra del pedido de ${pedido.quien}`));\n        payloads.push({ ...base(CONFIG.numeroAdmin), type: msg.type, [msg.type]: { id: msg[msg.type]?.id } });\n      }\n      for (const p of payloads) salida.push({ json: { phone_number_id: phoneNumberId, payload: p } });\n      continue;\n    }\n    delete memoria.f3d[uid]; // pasó el tiempo o escribió otra cosa: flujo normal\n  } else if (pedido) {\n    if (esMedio) pedido.medios.push({ tipo: msg.type, id: msg[msg.type]?.id });\n    const textoPedido = txtLibre || msg[msg.type]?.caption || '';\n    if (textoPedido) {\n      pedido.descripcion = textoPedido;\n      pedido.quien = `${value.contacts?.[0]?.profile?.name || 'Cliente'} (${msg.from || msg.from_user_id})`;\n      payloads.push(texto(to, TEXTOS.f3dResumen(pedido)));\n      if (CONFIG.numeroAdmin) {\n        payloads.push(texto(CONFIG.numeroAdmin, TEXTOS.f3dAdmin(pedido, pedido.quien)));\n        for (const m of pedido.medios) if (m.id) payloads.push({ ...base(CONFIG.numeroAdmin), type: m.tipo, [m.tipo]: { id: m.id } });\n      }\n      pedido.paso = 'enviado'; pedido.t = Date.now();\n      payloads.push(menu(to));\n    } else {\n      payloads.push(texto(to, esMedio ? TEXTOS.f3dFotoExtra : TEXTOS.f3dInicio));\n    }\n    for (const p of payloads) salida.push({ json: { phone_number_id: phoneNumberId, payload: p } });\n    continue;\n  }\n \n  // ¿Qué eligió el cliente?\n  let opcion = null;\n  if (msg.type === 'interactive') {\n    opcion = msg.interactive?.list_reply?.id || msg.interactive?.button_reply?.id || null;\n  } else if (msg.type === 'text') {\n    const t = (msg.text?.body || '').trim().toLowerCase();\n    opcion = ATAJOS[t] || null;\n  }\n \n  let fin = true; // ¿reenviar el menú principal al final?\n  if (opcion && opcion.startsWith('cat_')) {\n    const elegidos = opcion === 'cat_todos' ? CONFIG.catalogos : [CONFIG.catalogos[Number(opcion.slice(4))]].filter(Boolean);\n    for (const c of elegidos) {\n      payloads.push(texto(to, TEXTOS.catalogoEnviado(c)));\n      payloads.push(documento(to, c));\n    }\n    opcion = 'enviado';\n  } else if (opcion && opcion.startsWith('m3d_')) {\n    const m = CONFIG.modelos3d[Number(opcion.slice(4))];\n    if (m) payloads.push(...enviar3d(to, m));\n    opcion = 'enviado';\n  }\n \n  switch (opcion) {\n    case 'enviado': break;\n    case 'catalogos': payloads.push(submenuCatalogos(to)); fin = false; break;\n    case 'figura3d':  memoria.f3d[uid] = { paso: 'esperando', medios: [], descripcion: '' }; payloads.push(texto(to, TEXTOS.f3dInicio)); fin = false; break;\n    case 'comprar':   payloads.push(texto(to, TEXTOS.comoComprar)); break;\n    case 'envios':    payloads.push(texto(to, TEXTOS.envios)); break;\n    case 'ubicacion': payloads.push(texto(to, TEXTOS.ubicacion)); break;\n    case 'asesora':   payloads.push(texto(to, TEXTOS.asesora)); break;\n    default: {\n      // Mensaje libre (hola, foto, audio...): bienvenida si toca + menú\n      const ahora = Date.now();\n      const ultimo = memoria.vistos[to] || 0;\n      if (ahora - ultimo > CONFIG.horasEntreBienvenidas * 3600 * 1000) {\n        payloads.push(texto(to, TEXTOS.bienvenida));\n      }\n      memoria.vistos[to] = ahora;\n      payloads.push(menu(to));\n    }\n  }\n \n  if (opcion && fin && opcion !== 'asesora' && CONFIG.reenviarMenu) payloads.push(menu(to));\n \n  for (const p of payloads) salida.push({ json: { phone_number_id: phoneNumberId, payload: p } });\n}\n \nreturn salida;\n "
+      },
+      "id": "486684d6-71a7-4817-85c7-2743d24848e1",
+      "name": "Router (textos y menú)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v27.0/{{ $json.phone_number_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 700
+            }
+          }
+        }
+      },
+      "id": "92f11fbe-5ff4-48b5-9ffe-b7e43a1eb0c4",
+      "name": "Enviar a WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        224
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gWY8l5VOCfx3LubU",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Verificación Meta (GET)": {
+      "main": [
+        [
+          {
+            "node": "Responder a Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensajes WhatsApp (POST)": {
+      "main": [
+        [
+          {
+            "node": "Router (textos y menú)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router (textos y menú)": {
+      "main": [
+        [
+          {
+            "node": "Enviar a WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d2fa7d99-78a7-42d8-b5e7-3e2ce7f82f86",
+  "meta": {
+    "instanceId": "0bd44259797da4b531a5437abd9ba1f369884738498365345a207494b53c6417"
+  },
+  "nodeGroups": [],
+  "id": "cCv1rhPS8XAtToI7",
+  "tags": []
+}
